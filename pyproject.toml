@@ -6,6 +6,9 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = []
 
+[tool.coverage.run]
+relative_files = true
+
 [dependency-groups]
 dev = [
     "pre-commit>=4.0.1",
