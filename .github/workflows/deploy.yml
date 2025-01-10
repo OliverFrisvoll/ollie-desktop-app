@@ -62,6 +62,9 @@ jobs:
         with:
           python-version-file: "pyproject.toml"
 
+      - name: Get Toml
+        
+
       - name: Extract Version from pyproject.toml
         id: extract_version
         run: |
