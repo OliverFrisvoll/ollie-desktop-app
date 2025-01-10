@@ -26,6 +26,9 @@ jobs:
       - name: Build with PyInstaller
         run: uv run pyinstaller main.spec --clean --noconfirm
 
+      - name: Install toml
+        run: pip install toml
+
       - name: Extract Version from pyproject.toml
         id: extract_version
         run: |
@@ -62,8 +65,8 @@ jobs:
         with:
           python-version-file: "pyproject.toml"
 
-      - name: Get Toml
-        
+      - name: Install toml
+        run: pip install toml
 
       - name: Extract Version from pyproject.toml
         id: extract_version
