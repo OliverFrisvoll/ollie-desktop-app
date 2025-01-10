@@ -1,0 +1,90 @@
+name: Build and Pre-Release
+
+on:
+  pull_request:
+    branches:
+      - main
+
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: "Set up Python"
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: "pyproject.toml"
+
+      - name: Install the project
+        run: uv sync --all-extras --dev
+
+      - name: Build with PyInstaller
+        run: uv run pyinstaller main.spec --clean --noconfirm
+
+      - name: Install toml
+        run: pip install toml
+
+      - name: Extract Version from pyproject.toml
+        id: extract_version
+        run: |
+          python -c "import toml; print(f'VERSION={toml.load(open('pyproject.toml', 'r'))['project']['version']}')" >> $GITHUB_ENV
+
+      - name: Upload Versioned Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-app-v${{ env.VERSION }}
+          path: dist/app/app.exe
+
+      - name: Link to Artifact
+        run: echo "Download the artifact from the [Actions page](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifact)." > artifact_link.md
+
+      - name: Post Artifact Link to PR Summary
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const artifactContent = fs.readFileSync('artifact_link.md', 'utf8');
+            github.rest.issues.createComment({
+              issue_number: ${{ github.event.pull_request.number }},
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: artifactContent,
+            });
+  pre-release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: "Set up Python"
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: "pyproject.toml"
+
+      - name: Install toml
+        run: pip install toml
+
+      - name: Extract Version from pyproject.toml
+        id: extract_version
+        run: |
+          python -c "import toml; print(f'VERSION={toml.load(open('pyproject.toml', 'r'))['project']['version']}')" >> $GITHUB_ENV
+      - name: Download Versioned Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: release-app-v${{ env.VERSION }}
+          path: dist/app/app.exe
+
+      - name: Create Draft Pre-Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ env.VERSION }}-pr-${{ github.event.pull_request.number }}
+          release_name: "Temporary Release v${{ env.VERSION }} (PR #${{ github.event.pull_request.number }})"
+          draft: true
+          prerelease: true
+          files: dist/app/app.exe
